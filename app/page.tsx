@@ -1,103 +1,190 @@
-import Image from "next/image";
+import Link from "next/link";
+import { claudeProvider, config, isMockJobs } from "@/lib/config";
+import { getProfile, statusCounts, usageSummary } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+const PIPELINE: { key: string; label: string }[] = [
+  { key: "new", label: "New" },
+  { key: "saved", label: "Saved" },
+  { key: "tailored", label: "Tailored" },
+  { key: "applied", label: "Applied" },
+  { key: "interviewing", label: "Interviewing" },
+  { key: "rejected", label: "Rejected" },
+];
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const profile = getProfile();
+  const usage = usageSummary();
+  const counts = statusCounts();
+  const claude = claudeProvider();
+  const jobsMocked = isMockJobs();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const steps = [
+    {
+      done: Boolean(profile?.resumePath),
+      label: "Upload your resume (.docx)",
+      href: "/upload",
+      cta: "Upload",
+    },
+    {
+      done: Boolean(profile?.preferences.targetTitles.length),
+      label: "Say what you are looking for",
+      href: "/preferences",
+      cta: "Fill in",
+    },
+    {
+      done: Boolean(profile?.confirmedAt),
+      label: "Check the profile read off your resume",
+      href: "/review",
+      cta: "Review",
+    },
+  ];
+  const nextStep = steps.find((s) => !s.done);
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {profile?.resume.fullName
+            ? `Hello, ${profile.resume.fullName.split(" ")[0]}`
+            : "JobHunter"}
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          Running locally. Your resume, profile and saved jobs stay in{" "}
+          <code>data/</code> on this machine.
+        </p>
+      </header>
+
+      {(claude === "mock" || jobsMocked) && (
+        <div
+          className="rounded-lg border p-3 text-sm"
+          style={{
+            borderColor: "var(--warn)",
+            background: "color-mix(in srgb, var(--warn) 10%, transparent)",
+          }}
+        >
+          <strong>Nothing is costing you money yet.</strong>{" "}
+          {claude === "mock" && "Claude is in mock mode. "}
+          {jobsMocked && "Job search is returning sample postings. "}
+          Everything works end to end, but the output is not real. See{" "}
+          <code>.env.example</code> for how to switch each one on.
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      <section className="card p-4">
+        <h2 className="mb-3 font-semibold">Setup</h2>
+        <ol className="space-y-2 text-sm">
+          {steps.map((s) => (
+            <li key={s.href} className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs"
+                style={
+                  s.done
+                    ? {
+                        borderColor: "var(--good)",
+                        color: "var(--good)",
+                        background:
+                          "color-mix(in srgb, var(--good) 12%, transparent)",
+                      }
+                    : { borderColor: "var(--border)", color: "var(--muted)" }
+                }
+              >
+                {s.done ? "✓" : ""}
+              </span>
+              <span className={s.done ? "text-muted line-through" : ""}>
+                {s.label}
+              </span>
+              {!s.done && (
+                <Link href={s.href} className="btn ml-auto">
+                  {s.cta}
+                </Link>
+              )}
+            </li>
+          ))}
+        </ol>
+        {!nextStep && (
+          <div className="mt-4 flex items-center gap-3">
+            <Link href="/jobs" className="btn btn-primary">
+              Find matching jobs
+            </Link>
+            <span className="text-xs text-muted">
+              Postings newer than {config.maxJobAgeDays} days only.
+            </span>
+          </div>
+        )}
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2">
+        <div className="card p-4">
+          <h2 className="mb-3 font-semibold">Pipeline</h2>
+          {Object.keys(counts).length === 0 ? (
+            <p className="text-sm text-muted">
+              No jobs yet. Run a search once your profile is confirmed.
+            </p>
+          ) : (
+            <dl className="space-y-1.5 text-sm">
+              {PIPELINE.filter((p) => counts[p.key]).map((p) => (
+                <div key={p.key} className="flex justify-between">
+                  <dt className="text-muted">{p.label}</dt>
+                  <dd className="font-mono font-semibold">{counts[p.key]}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <Link href="/jobs" className="btn mt-4">
+            Open job list
+          </Link>
+        </div>
+
+        <div className="card p-4">
+          <h2 className="mb-3 font-semibold">This month</h2>
+          <dl className="space-y-2 text-sm">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">Job API requests</dt>
+              <dd className="font-mono">
+                {usage.jsearch.requests.toLocaleString()} /{" "}
+                {usage.jsearch.quota.toLocaleString()}
+              </dd>
+            </div>
+            {usage.jsearch.overageRequests > 0 && (
+              <div className="flex items-baseline justify-between gap-3">
+                <dt style={{ color: "var(--warn)" }}>Over your allowance</dt>
+                <dd className="font-mono" style={{ color: "var(--warn)" }}>
+                  {usage.jsearch.overageRequests} = $
+                  {usage.jsearch.overageUsd.toFixed(2)}
+                </dd>
+              </div>
+            )}
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">Claude spend</dt>
+              <dd className="font-mono">
+                ${usage.claude.usd.toFixed(4)} / $
+                {usage.claude.cap.toFixed(2)} cap
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-muted">Claude calls</dt>
+              <dd className="font-mono">{usage.claude.callCount}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-muted">
+            Scoring: <code>{config.scoringModel}</code>
+            <br />
+            Tailoring: <code>{config.tailorModel}</code>
+            <br />
+            Claude backend: <code>{claude}</code>, jobs:{" "}
+            <code>{config.jobSource}</code>
+          </p>
+          {usage.claude.capReached && (
+            <p className="mt-2 text-xs" style={{ color: "var(--bad)" }}>
+              The spend cap is reached. Paid Claude calls are refused until you
+              raise <code>CLAUDE_MONTHLY_USD_CAP</code>.
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

@@ -2,25 +2,134 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --surface: #f7f7f8;
+  --border: #e4e4e7;
+  --foreground: #18181b;
+  --muted: #6b7280;
+  --accent: #1d4ed8;
+  --accent-soft: #eff4ff;
+  --good: #047857;
+  --warn: #b45309;
+  --bad: #b91c1c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b0b0d;
+    --surface: #16161a;
+    --border: #2a2a31;
+    --foreground: #ededf0;
+    --muted: #9ca3af;
+    --accent: #7ea2ff;
+    --accent-soft: #15203a;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+/* The handful of patterns that would otherwise be copied into every screen. */
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--background);
+    color: var(--foreground);
+  }
+  .btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    color: #fff;
+  }
+
+  .input {
+    width: 100%;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.875rem;
+    color: var(--foreground);
+  }
+  .input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    font-size: 0.75rem;
+    background: var(--background);
+  }
+
+  .label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+}
+
+/* Word-level diff rendering for the tailoring view. */
+.diff-add {
+  background: color-mix(in srgb, var(--good) 22%, transparent);
+}
+.diff-del {
+  background: color-mix(in srgb, var(--bad) 18%, transparent);
+  text-decoration: line-through;
+  opacity: 0.75;
 }

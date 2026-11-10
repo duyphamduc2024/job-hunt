@@ -1,27 +1,44 @@
 {
-  "name": "jobhunter-scaffold",
+  "name": "jobhunter",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npm run test:docx && npm run test:jobs && npm run test:tailor",
+    "test:docx": "tsx scripts/docx-test.ts",
+    "test:jobs": "tsx scripts/jobs-test.ts",
+    "test:tailor": "tsx scripts/tailor-test.ts",
+    "sample-resume": "tsx scripts/make-sample-resume.ts",
+    "check-keys": "tsx scripts/check-keys.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "better-sqlite3": "^11.10.0",
+    "diff": "^9.0.0",
+    "jszip": "^3.10.2",
+    "next": "15.5.29",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.29"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/diff": "^8.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "magic-string": "^0.30.17"
   }
 }
