@@ -1,19 +1,48 @@
 # JobHunter
 
-A local job-hunting app. Drop in your resume, get a profile you can correct,
-search job boards for roles posted in the last two weeks, rank them against your
-actual experience, generate a tailored version of your resume for one, and get
-walked into the application form with the fields prefilled.
+A local job-hunting assistant. Drop in your resume, correct what it extracted,
+search real job boards for roles posted in the last two weeks, rank them
+against your actual experience, then generate a tailored resume and cover
+letter for the ones worth applying to.
 
-Runs on `localhost`. No auth, no deploy, no account. Your resume, profile and
-saved jobs stay in `data/` on this machine.
+It runs entirely on your own machine. No account, no deploy, no telemetry.
+Your resume, profile and saved jobs live in `data/` and never leave the box
+except as text sent to the Claude API for parsing and writing.
+
+**It will not apply on your behalf.** It prefills what it can and stops at the
+submit button, by design.
+
+## What it actually does
+
+| Step | What happens |
+|---|---|
+| **Resume intake** | Reads a `.docx` into a structured profile. Works with no API key at all, via a pattern-matching fallback. |
+| **Pre-screen** | Asks for the things a resume does not say: target titles, locations, work authorisation, salary floor. |
+| **Review** | Shows everything it extracted, fully editable. Bad extraction quietly ruins every match score, so this screen matters. |
+| **Search** | Queries a job API, discards anything older than 14 days or with no posting date, collapses the same role across boards, and ranks it. |
+| **Ranking** | A free keyword prefilter narrows the field, then one batched Claude call scores the shortlist and says *why* each matched and what the gaps are. |
+| **Tailoring** | Rewrites your `.docx` in place, preserving your layout. Edits that invent or drop a figure are rejected outright. |
+| **Cover letters** | Written under the same rule, and required to list every factual claim they make so you can check each one. |
+| **Application folders** | One folder per job holding the posting, the tailored resume, the letter and the notes, plus an `INDEX.md` tracking what you sent where. |
 
 ---
 
-## Quick start
+## Requirements
+
+- **Node 20 or newer** (`node -v`). Built and tested on Node 20.11.
+- macOS or Linux. Windows should work but is untested.
+- Optional: an [Anthropic API key](https://platform.claude.com) and a
+  [JSearch key](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch/pricing).
+  Neither is needed to try it — see below.
+
+## Install
 
 ```bash
-npm install
+git clone https://github.com/duyphamduc2024/job-hunt.git
+```
+
+```bash
+cd job-hunt && npm install
 ```
 
 ```bash
@@ -24,11 +53,20 @@ cp .env.example .env.local
 npm run dev -- --port 5055
 ```
 
-Then open <http://localhost:5055>.
+Open <http://localhost:5055>.
 
-**Out of the box it costs nothing.** `.env.example` ships with
-`CLAUDE_PROVIDER=mock` and `JOB_SOURCE=mock`, so the whole app works end to end
-on sample data with no API calls. Turn each one on when you are ready.
+**Out of the box it costs nothing and needs no keys.** `.env.example` ships
+with `CLAUDE_PROVIDER=mock` and `JOB_SOURCE=mock`, so the whole app runs end to
+end on sample data. Resume parsing still works on your *real* file in mock
+mode, because the pattern-matching fallback needs no API call — which makes it
+a genuine way to try the thing before paying for anything.
+
+When you are ready for real output, see [Getting your keys](#getting-your-keys)
+and verify them with:
+
+```bash
+npm run check-keys
+```
 
 ---
 
@@ -290,7 +328,7 @@ database:
 ```
 data/applications/
   INDEX.md                                   every application, grouped by status
-  2026-11-02_MiaRec_Software-QA-Engineer/
+  2026-11-02_Acme_Software-QA-Engineer/
     README.md                                link, salary, match, pre-send checklist
     job-description.md                       the posting as captured
     resume.docx                              the tailored resume
@@ -448,3 +486,17 @@ npm run sample-resume -- sample.docx
 builds a realistic test resume, and `scripts/verify-docx.ts <original> <tailored>`
 diffs a tailored document against its original paragraph by paragraph and fails
 if any figure moved.
+
+---
+
+## License
+
+MIT. Use it, fork it, change it.
+
+## A note on scope
+
+This was built for one person's job search and is shaped by that. It assumes a
+single user, a single resume, and a machine you control. There is no auth, and
+adding a second user would mean reworking storage. If you deploy it, read
+[Deploying later](#deploying-later) first — and add authentication, because
+otherwise your resume and address are served to anyone who finds the URL.

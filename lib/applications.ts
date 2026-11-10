@@ -18,7 +18,7 @@ import type {
 //
 //   data/applications/
 //     INDEX.md                               <- every application, by status
-//     2026-11-10_MiaRec_Software-QA-Engineer/
+//     2026-11-10_Acme_Software-QA-Engineer/
 //       README.md                            <- link, facts, match, checklist
 //       job-description.md                   <- the posting, as captured
 //       resume.docx                          <- the tailored resume

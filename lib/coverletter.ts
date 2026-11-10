@@ -100,7 +100,7 @@ function claimLooksSupported(claim: string, resumeText: string): boolean {
           "where","every","other","years","first","after","before",
         ].includes(w),
     );
-  // One testable word is not enough to judge on - "Lives in San Jose" would
+  // One testable word is not enough to judge on - "Lives in Springfield" would
   // be flagged purely because "lives" is not a word on the resume. Stay quiet
   // rather than cry wolf; a noisy checker gets ignored, which is worse.
   if (terms.length < 2) return true;
