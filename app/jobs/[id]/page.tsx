@@ -72,6 +72,19 @@ export default function JobDetailPage() {
   const [packetBusy, setPacketBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exported, setExported] = useState<{
+    dir: string;
+    files: string[];
+    steps: string[];
+    usd: number;
+    coverLetter: {
+      text: string;
+      claimsMade: string[];
+      unverifiable: string[];
+    } | null;
+  } | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -159,6 +172,30 @@ export default function JobDetailPage() {
       setError(`Could not build the apply packet: ${(err as Error).message}`);
     } finally {
       setPacketBusy(false);
+    }
+  }
+
+  async function runExport() {
+    setExportBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: id }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setError(d.error ?? "Could not save the application folder.");
+        return;
+      }
+      setExported(d);
+      refreshUsage();
+      await load();
+    } catch (err) {
+      setError("Could not save the folder: " + (err as Error).message);
+    } finally {
+      setExportBusy(false);
     }
   }
 
@@ -259,6 +296,14 @@ export default function JobDetailPage() {
           disabled={packetBusy}
         >
           {packetBusy ? "Building..." : "Help me apply"}
+        </button>
+        <button
+          className="btn"
+          onClick={() => void runExport()}
+          disabled={exportBusy}
+          title="Writes a folder with the posting, tailored resume, cover letter and notes"
+        >
+          {exportBusy ? "Saving..." : "Save application folder"}
         </button>
         <select
           className="input text-sm"
@@ -442,6 +487,59 @@ export default function JobDetailPage() {
                 they are dealbreakers.
               </p>
             </div>
+          )}
+        </section>
+      )}
+
+      {exported && (
+        <section className="card space-y-3 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Saved to your application folder</h2>
+            <span className="text-xs text-muted">
+              {exported.usd > 0
+                ? "$" + exported.usd.toFixed(4)
+                : "no extra cost"}
+            </span>
+          </div>
+          <code className="block overflow-x-auto rounded border border-border p-2 text-xs">
+            {exported.dir}
+          </code>
+          <div className="flex flex-wrap gap-1.5">
+            {exported.files.map((f) => (
+              <span key={f} className="chip">
+                {f}
+              </span>
+            ))}
+          </div>
+          <ul className="space-y-0.5 text-xs text-muted">
+            {exported.steps.map((s, i) => (
+              <li key={i}>- {s}</li>
+            ))}
+          </ul>
+          {exported.coverLetter && (
+            <details>
+              <summary className="cursor-pointer text-sm font-medium">
+                Cover letter - {exported.coverLetter.claimsMade.length} claims
+                {exported.coverLetter.unverifiable.length > 0
+                  ? ", " +
+                    exported.coverLetter.unverifiable.length +
+                    " to check"
+                  : ""}
+              </summary>
+              <pre className="mt-2 whitespace-pre-wrap rounded border border-border p-3 text-xs leading-relaxed">
+                {exported.coverLetter.text}
+              </pre>
+              {exported.coverLetter.unverifiable.length > 0 && (
+                <div className="mt-2 text-xs" style={{ color: "var(--warn)" }}>
+                  Verify or cut these:
+                  <ul className="mt-1 space-y-0.5">
+                    {exported.coverLetter.unverifiable.map((c, i) => (
+                      <li key={i}>- {c}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </details>
           )}
         </section>
       )}

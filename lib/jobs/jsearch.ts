@@ -28,6 +28,9 @@ export interface SearchQuery {
   country: string;
   /** How many result pages to pull. Each page is billed as one request. */
   numPages: number;
+  /** JSearch v5 pagination: an opaque cursor from a previous response's
+   *  data.cursor. Omit for the first page. */
+  cursor?: string;
 }
 
 export interface SourceResult {
@@ -37,6 +40,8 @@ export interface SourceResult {
   quotaLimit: number | null;
   quotaRemaining: number | null;
   warnings: string[];
+  /** v5 pagination cursor from the last response, for fetching more later. */
+  nextCursor?: string | null;
 }
 
 /** JSearch's date_posted only has these buckets, so we pick the smallest one
@@ -47,6 +52,15 @@ export function datePostedBucket(maxAgeDays: number): string {
   if (maxAgeDays <= 7) return "week";
   return "month";
 }
+
+/**
+ * The job-search route. NOT "/search" - that is what JSearch's own written
+ * description still says, but the v5 API actually serves "/search-v2" and the
+ * gateway returns a flat 404 ("Endpoint '/search' does not exist") for the
+ * old name. Verified against the live API; the route list on the RapidAPI
+ * listing is the authoritative source if this ever moves again.
+ */
+const SEARCH_PATH = "/search-v2";
 
 interface Endpoint {
   url: string;
@@ -66,7 +80,7 @@ function endpoint(): Endpoint {
       );
     }
     return {
-      url: `${base}/search`,
+      url: `${base}${SEARCH_PATH}`,
       headers: {
         "x-api-key": config.openWebNinjaApiKey,
         Accept: "application/json",
@@ -74,7 +88,7 @@ function endpoint(): Endpoint {
     };
   }
   return {
-    url: `https://${config.rapidApiHost}/search`,
+    url: `https://${config.rapidApiHost}${SEARCH_PATH}`,
     headers: {
       "x-rapidapi-key": config.rapidApiKey,
       "x-rapidapi-host": config.rapidApiHost,
@@ -87,6 +101,9 @@ function endpoint(): Endpoint {
 
 interface RawJob {
   job_id?: string;
+  /** The stable per-posting id. `job_id` is this value plus a volatile
+   *  per-request suffix, so it must NOT be used for identity. */
+  job_uid?: string;
   employer_name?: string;
   job_title?: string;
   job_apply_link?: string;
@@ -146,10 +163,19 @@ export function dedupeKeyFor(company: string, title: string): string {
   return `${normaliseCompany(company)}::${normaliseTitle(title)}`;
 }
 
-/** Stable id so re-running a search updates rather than duplicates. */
+/**
+ * Stable id so re-running a search updates rather than duplicates.
+ *
+ * Must come from `job_uid`: JSearch's `job_id` is that uid plus a volatile
+ * per-request suffix, so hashing it produced a different id on every search.
+ * That silently duplicated every posting AND defeated the "already scored"
+ * check, meaning each search re-paid Claude to score jobs it had seen.
+ */
 function jobIdFor(source: string, raw: RawJob, applyUrl: string): string {
   const basis =
-    raw.job_id ||
+    raw.job_uid ||
+    // Older deployments sent only job_id; keep the stable part before ":".
+    raw.job_id?.split(":")[0] ||
     `${raw.employer_name ?? ""}|${raw.job_title ?? ""}|${applyUrl}`;
   return crypto
     .createHash("sha256")
@@ -251,16 +277,20 @@ export async function searchJSearch(
   let requestsUsed = 0;
   let quotaLimit: number | null = null;
   let quotaRemaining: number | null = null;
+  let nextCursor: string | null = null;
 
   for (const q of queries) {
+    // JSearch v5: `page` was replaced by an opaque `cursor` (from data.cursor),
+    // and `remote_jobs_only` was renamed `work_from_home`. Sending the old
+    // names silently returns unfiltered results rather than erroring.
     const params = new URLSearchParams({
       query: q.query,
-      page: "1",
       num_pages: String(q.numPages),
       date_posted: datePostedBucket(config.maxJobAgeDays),
       country: q.country,
     });
-    if (q.remoteOnly) params.set("remote_jobs_only", "true");
+    if (q.cursor) params.set("cursor", q.cursor);
+    if (q.remoteOnly) params.set("work_from_home", "true");
     if (q.employmentTypes.length) {
       params.set("employment_types", q.employmentTypes.join(","));
     }
@@ -315,19 +345,32 @@ export async function searchJSearch(
       continue;
     }
 
-    let payload: { data?: RawJob[]; status?: string };
+    // v5 returns data as { jobs, cursor }; older deployments returned a bare
+    // array. Accept both so a rollback either way does not break the app.
+    let payload: {
+      status?: string;
+      data?: RawJob[] | { jobs?: RawJob[]; cursor?: string };
+    };
     try {
-      payload = (await response.json()) as { data?: RawJob[] };
+      payload = (await response.json()) as typeof payload;
     } catch {
       warnings.push(`"${q.query}" returned a response that was not JSON.`);
       continue;
     }
 
-    for (const raw of payload.data ?? []) {
+    const container = payload.data;
+    const rawJobs: RawJob[] = Array.isArray(container)
+      ? container
+      : (container?.jobs ?? []);
+    if (!Array.isArray(container) && container?.cursor) {
+      nextCursor = container.cursor;
+    }
+
+    for (const raw of rawJobs) {
       const job = toJob(raw, source);
       if (job) jobs.push(job);
     }
   }
 
-  return { jobs, requestsUsed, quotaLimit, quotaRemaining, warnings };
+  return { jobs, requestsUsed, quotaLimit, quotaRemaining, warnings, nextCursor };
 }

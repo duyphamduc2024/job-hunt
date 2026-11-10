@@ -195,6 +195,16 @@ export interface Tailoring {
   createdAt: string;
 }
 
+/** A generated cover letter, as written to an application folder. */
+export interface CoverLetterExport {
+  /** The rendered letter, ready to paste or print. */
+  text: string;
+  /** Every factual claim the letter makes, for the user to verify. */
+  claimsMade: string[];
+  /** Claims whose terms could not be traced back to the resume. */
+  unverifiable: string[];
+}
+
 /** A single metered call, for the usage display. */
 export interface UsageRow {
   id: number;

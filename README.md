@@ -281,6 +281,49 @@ fields out differently on every tenant, and you will have to help.
 
 ---
 
+## Application folders
+
+Press **Save application folder** on any job and it writes a self-contained
+folder under `data/applications/`, so what you sent where outlives the
+database:
+
+```
+data/applications/
+  INDEX.md                                   every application, grouped by status
+  2026-11-02_MiaRec_Software-QA-Engineer/
+    README.md                                link, salary, match, pre-send checklist
+    job-description.md                       the posting as captured
+    resume.docx                              the tailored resume
+    cover-letter.md / cover-letter.docx      the cover letter
+    tailoring-notes.md                       every change, and what is NOT supported
+```
+
+`INDEX.md` is regenerated on every export and is the page to open when you
+want to know what is outstanding.
+
+**Exporting is free unless you ask for the expensive parts.** The API takes
+`tailor` and `coverLetter` flags, both defaulting to true from the UI button.
+With both false it writes the link, description and match only, costing
+nothing:
+
+```bash
+curl -s -X POST localhost:5055/api/export -H 'Content-Type: application/json' -d '{"jobId":"<id>","tailor":false,"coverLetter":false}'
+```
+
+That makes it cheap to create a tracker folder for every result, then add a
+tailored resume and cover letter only for the ones you actually apply to.
+
+### Cover letters
+
+Written by the tailoring model under the same rule as the resume: nothing may
+be claimed that the resume does not support. The letter is also required to
+return **every factual claim it makes**, which lands in `cover-letter.md` as a
+checklist, and any claim whose wording does not trace back to your resume is
+flagged separately. The prompt explicitly bans "passionate", "detail-oriented"
+and "quick learner", because they are unfalsifiable and everybody writes them.
+
+Application folders are gitignored. They contain your real contact details.
+
 ## What is solid and what is not
 
 | Part | Verdict |
@@ -292,6 +335,8 @@ fields out differently on every tenant, and you will have to help.
 | Dedupe across boards | Good, not perfect. Fuzzy company + title matching. |
 | Cross-board coverage | Only as good as the source you pay for. LinkedIn has no open API and blocks scraping; nothing here scrapes it. |
 | ATS form prefill | Fragile. See above. |
+| Cover letters | Solid, with the same no-fabrication guard, plus a claims checklist. |
+| Aggregator metadata | **Do not trust it.** Seen in live use: a posting listed as remote/Anywhere was onsite in Mesa, Arizona on the employer's own site. Always open the real posting before applying. |
 
 ---
 
